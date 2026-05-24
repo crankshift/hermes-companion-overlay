@@ -2,6 +2,21 @@
 
 These commands link selected source assets from `$HOME/companion` into a live Hermes runtime. They are intentionally guarded: existing runtime files or directories are not replaced.
 
+## Clone Location
+
+The examples below assume this overlay is checked out at `$HOME/companion`, even if the Git repository is named `hermes-companion-overlay`. Clone with an explicit destination so the local folder matches the default install path:
+
+```bash
+git clone <repo-url> "$HOME/companion"
+cd "$HOME/companion"
+```
+
+If you keep the checkout somewhere else, set `OVERLAY_HOME` to that path before running the install commands:
+
+```bash
+export OVERLAY_HOME=/path/to/hermes-companion-overlay
+```
+
 ## Defaults
 
 - `OVERLAY_HOME` defaults to `$HOME/companion`.
