@@ -39,6 +39,36 @@ def fake_telegram_adapter(adapter_cls):
                 sys.modules[name] = module
 
 
+@contextlib.contextmanager
+def fake_hermes_commands_module(menu_commands):
+    module_names = ["hermes_cli", "hermes_cli.commands"]
+    missing = object()
+    originals = {name: sys.modules.get(name, missing) for name in module_names}
+
+    hermes_cli = types.ModuleType("hermes_cli")
+    commands = types.ModuleType("hermes_cli.commands")
+    commands._TELEGRAM_MENU_PRIORITY = tuple(name for name, _description in menu_commands)
+
+    def telegram_menu_commands(max_commands=30):
+        return list(menu_commands[:max_commands])
+
+    commands.telegram_menu_commands = telegram_menu_commands
+    hermes_cli.commands = commands
+
+    try:
+        sys.modules.update({
+            "hermes_cli": hermes_cli,
+            "hermes_cli.commands": commands,
+        })
+        yield commands
+    finally:
+        for name, module in originals.items():
+            if module is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+
+
 class PatchTests(unittest.TestCase):
     def setUp(self):
         load_plugin_package()
@@ -179,6 +209,36 @@ class PatchTests(unittest.TestCase):
                     sys.modules.pop(name, None)
                 else:
                     sys.modules[name] = module
+
+    def test_tvoice_is_forced_into_capped_telegram_menu(self):
+        menu_commands = [(f"cmd{i}", f"description {i}") for i in range(35)]
+
+        with fake_hermes_commands_module(menu_commands) as commands:
+            self.patches._promote_tvoice_in_telegram_menu()
+            visible = commands.telegram_menu_commands(max_commands=30)
+
+        names = [name for name, _description in visible]
+        self.assertIn("tvoice", names)
+        self.assertLessEqual(len(visible), 30)
+
+    def test_tvoice_telegram_menu_description_omits_legacy_presets(self):
+        menu_commands = [
+            (
+                "tvoice",
+                "Switch Telegram/CLI Edge TTS voice preset: status, ua-ostap, pl-marek, auto <text>",
+            ),
+        ]
+
+        with fake_hermes_commands_module(menu_commands) as commands:
+            self.patches._promote_tvoice_in_telegram_menu()
+            visible = commands.telegram_menu_commands(max_commands=30)
+
+        descriptions = {name: description for name, description in visible}
+        self.assertIn("list [query]", descriptions["tvoice"])
+        self.assertIn("set <voice-id>", descriptions["tvoice"])
+        self.assertNotIn("ua-ostap", descriptions["tvoice"])
+        self.assertNotIn("pl-marek", descriptions["tvoice"])
+        self.assertNotIn("preset", descriptions["tvoice"].lower())
 
 
 if __name__ == "__main__":

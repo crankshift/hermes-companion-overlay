@@ -13,6 +13,8 @@ from .sanitizer import _sanitize_text_for_tts
 
 logger = logging.getLogger(__name__)
 
+TVOICE_MENU_DESCRIPTION = "Switch Edge TTS voice: status, list [query], set <voice-id>, refresh"
+
 
 def _install_tts_text_filter() -> None:
     """Patch Hermes' TTS entrypoints so voice replies skip footer/emoji."""
@@ -128,6 +130,97 @@ def _install_telegram_voice_delivery_patch() -> None:
     TelegramAdapter._telegram_tvoice_ogg_patch_installed = True
 
 
+def _menu_command_name(command: Any) -> str | None:
+    if isinstance(command, dict):
+        name = command.get("command") or command.get("name")
+        return str(name) if name else None
+    if isinstance(command, (tuple, list)) and command:
+        return str(command[0])
+    name = getattr(command, "command", None) or getattr(command, "name", None)
+    return str(name) if name else None
+
+
+def _tvoice_menu_entry(sample: Any = None) -> Any:
+    if isinstance(sample, dict):
+        entry = dict(sample)
+        if "command" in entry or "name" not in entry:
+            entry["command"] = "tvoice"
+            entry.pop("name", None)
+        else:
+            entry["name"] = "tvoice"
+        entry["description"] = TVOICE_MENU_DESCRIPTION
+        return entry
+    if isinstance(sample, tuple):
+        if hasattr(sample, "_fields"):
+            try:
+                return sample.__class__("tvoice", TVOICE_MENU_DESCRIPTION)
+            except Exception:
+                pass
+        return ("tvoice", TVOICE_MENU_DESCRIPTION, *sample[2:])
+    if isinstance(sample, list):
+        return ["tvoice", TVOICE_MENU_DESCRIPTION, *sample[2:]]
+    if sample is not None:
+        try:
+            return sample.__class__(command="tvoice", description=TVOICE_MENU_DESCRIPTION)
+        except Exception:
+            try:
+                return sample.__class__("tvoice", TVOICE_MENU_DESCRIPTION)
+            except Exception:
+                pass
+    return ("tvoice", TVOICE_MENU_DESCRIPTION)
+
+
+def _telegram_menu_limit(args: tuple[Any, ...], kwargs: dict[str, Any]) -> int | None:
+    raw_limit = kwargs.get("max_commands")
+    if raw_limit is None and args:
+        raw_limit = args[0]
+    if raw_limit is None:
+        raw_limit = 30
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        return None
+    return limit if limit > 0 else None
+
+
+def _install_tvoice_telegram_menu_wrapper(commands: Any) -> None:
+    original = getattr(commands, "telegram_menu_commands", None)
+    if not callable(original) or getattr(original, "_telegram_tvoice_menu_patch_installed", False):
+        return
+
+    @functools.wraps(original)
+    def _telegram_menu_commands_with_tvoice(*args: Any, **kwargs: Any) -> Any:
+        raw_result = original(*args, **kwargs)
+        commands_list = list(raw_result or [])
+        sample = commands_list[0] if commands_list else None
+        tvoice_entry = _tvoice_menu_entry(sample)
+        limit = _telegram_menu_limit(args, kwargs)
+
+        updated: list[Any] = []
+        found_tvoice = False
+        for command in commands_list:
+            if _menu_command_name(command) == "tvoice":
+                updated.append(_tvoice_menu_entry(command))
+                found_tvoice = True
+            else:
+                updated.append(command)
+
+        if not found_tvoice:
+            if limit is not None and len(updated) >= limit:
+                updated = updated[: max(limit - 1, 0)]
+            updated.append(tvoice_entry)
+
+        if limit is not None:
+            updated = updated[:limit]
+        if isinstance(raw_result, tuple):
+            return tuple(updated)
+        return updated
+
+    setattr(_telegram_menu_commands_with_tvoice, "_telegram_tvoice_menu_patch_installed", True)
+    setattr(_telegram_menu_commands_with_tvoice, "_telegram_tvoice_original", original)
+    setattr(commands, "telegram_menu_commands", _telegram_menu_commands_with_tvoice)
+
+
 def _promote_tvoice_in_telegram_menu() -> None:
     """Keep /tvoice visible in Telegram's capped BotCommand menu."""
     try:
@@ -143,6 +236,7 @@ def _promote_tvoice_in_telegram_menu() -> None:
         else:
             current.insert(0, "tvoice")
         setattr(commands, "_TELEGRAM_MENU_PRIORITY", tuple(current))
+        _install_tvoice_telegram_menu_wrapper(commands)
     except Exception:
         # Menu promotion is best-effort; the command itself remains registered.
         pass
