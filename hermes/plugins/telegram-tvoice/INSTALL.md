@@ -85,6 +85,8 @@ hermes gateway restart
 
 Or exit and relaunch the CLI session.
 
+If Telegram still shows an old `/tvoice` description after a gateway restart, check `TROUBLESHOOTING.md` for stale chat-scoped BotCommand overrides. A specific DM chat scope can override the updated default or `all_private_chats` menu until `deleteMyCommands` is run for that chat.
+
 Then try:
 
 ```text

@@ -8,6 +8,45 @@
 - If using a symlinked plugin root, check `realpath "$HERMES_HOME/plugins/telegram-tvoice"`
 - If the Telegram command menu does not show `/tvoice`, type it manually; Telegram menus are capped and gateway restart may be needed for the promoted menu order
 
+## Telegram still shows an old `/tvoice` description
+
+Hermes can publish a fresh default or `all_private_chats` BotCommand menu while Telegram still shows an older command description in one DM. Telegram picks the narrowest matching command scope, so a stale `chat` scope for that DM can override the updated global/private menu.
+
+If a specific chat still shows legacy text such as `ua-ostap`, `pl-marek`, or `voice preset`, delete the stale chat-scoped command list. This does not delete the global menu; it lets Telegram fall back to the newer `all_private_chats` or default scope.
+
+Set these locally first:
+
+```bash
+export TELEGRAM_BOT_TOKEN='<bot-token>'
+export TELEGRAM_CHAT_ID='<dm-chat-id>'
+```
+
+Check the chat-specific override:
+
+```bash
+curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMyCommands" \
+  -H "Content-Type: application/json" \
+  -d "{\"scope\":{\"type\":\"chat\",\"chat_id\":$TELEGRAM_CHAT_ID}}"
+```
+
+Remove the stale chat-specific override:
+
+```bash
+curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteMyCommands" \
+  -H "Content-Type: application/json" \
+  -d "{\"scope\":{\"type\":\"chat\",\"chat_id\":$TELEGRAM_CHAT_ID}}"
+```
+
+Then verify the chat scope is empty or no longer contains the old `/tvoice` description:
+
+```bash
+curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMyCommands" \
+  -H "Content-Type: application/json" \
+  -d "{\"scope\":{\"type\":\"chat\",\"chat_id\":$TELEGRAM_CHAT_ID}}"
+```
+
+After `deleteMyCommands`, Telegram clients may still cache slash-command suggestions briefly. Close and reopen the chat or restart Telegram if the Bot API output is clean but the UI still looks stale.
+
 ## Groq key is missing
 
 Groq is only needed for STT from Telegram voice notes. Edge TTS and `/tvoice` voice switching work without it.
