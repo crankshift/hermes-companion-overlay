@@ -1,34 +1,5 @@
-"""Constants for the telegram-tvoice Hermes plugin."""
+"""Language detection constants for the telegram-tvoice Hermes plugin."""
 from __future__ import annotations
-
-PRESETS: dict[str, dict[str, str]] = {
-    "ua-ostap": {
-        "provider": "edge",
-        "voice": "uk-UA-OstapNeural",
-        "label": "Ukrainian Ostap",
-        "lang": "uk",
-    },
-    "pl-marek": {
-        "provider": "edge",
-        "voice": "pl-PL-MarekNeural",
-        "label": "Polish Marek",
-        "lang": "pl",
-    },
-}
-
-ALIASES: dict[str, str] = {
-    "ua": "ua-ostap",
-    "uk": "ua-ostap",
-    "ukrainian": "ua-ostap",
-    "ostap": "ua-ostap",
-    "українська": "ua-ostap",
-    "укр": "ua-ostap",
-    "pl": "pl-marek",
-    "polish": "pl-marek",
-    "marek": "pl-marek",
-    "польська": "pl-marek",
-    "пол": "pl-marek",
-}
 
 UK_HINTS = set("іїєґІЇЄҐ")
 PL_HINTS = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
@@ -69,4 +40,19 @@ UK_WORDS = {
     "цей",
     "можна",
     "буде",
+}
+
+EN_WORDS = {
+    "a",
+    "and",
+    "are",
+    "english",
+    "hello",
+    "is",
+    "please",
+    "test",
+    "the",
+    "this",
+    "voice",
+    "we",
 }

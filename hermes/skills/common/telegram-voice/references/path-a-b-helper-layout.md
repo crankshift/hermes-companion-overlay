@@ -46,16 +46,13 @@ A plugin can register a command name distinct from built-in `/voice`. Do not try
 - If the running gateway has not picked up `.env` changes or does not reload the relevant config before TTS generation, use `/restart` once.
 - True per-chat no-restart voice switching still requires Hermes core support via gateway state plus `gateway.session_context`.
 
-## Example helper commands
+## Example plugin commands
 
 ```bash
-voice-preset status
-voice-preset ua-ostap
-voice-preset pl-marek
-voice-preset auto "Привіт, говоримо українською"
-echo "Cześć, mówimy po polsku" | voice-preset auto
-
-# Short alias if installed:
 tvoice status
-tvoice pl-marek
+tvoice list uk male
+tvoice set uk-UA-OstapNeural
+tvoice list pl male
+tvoice set pl-PL-MarekNeural
+tvoice auto "Привіт, говоримо українською"
 ```

@@ -40,53 +40,216 @@ def fake_config_module(load_config=None, env=None):
                 sys.modules[name] = module
 
 
+@contextlib.contextmanager
+def fake_edge_tts_module(voices=None, error=None):
+    module_name = "edge_tts"
+    missing = object()
+    original = sys.modules.get(module_name, missing)
+    edge_tts = types.ModuleType(module_name)
+
+    def list_voices():
+        if error is not None:
+            raise error
+        return voices or []
+
+    edge_tts.list_voices = list_voices
+    sys.modules[module_name] = edge_tts
+
+    try:
+        yield
+    finally:
+        if original is missing:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = original
+
+
+SAMPLE_EDGE_VOICES = [
+    {
+        "ShortName": "uk-UA-PolinaNeural",
+        "Locale": "uk-UA",
+        "Gender": "Female",
+        "FriendlyName": "Microsoft Polina Online (Natural) - Ukrainian (Ukraine)",
+        "VoiceTag": {"ContentCategories": ["General"]},
+    },
+    {
+        "ShortName": "uk-UA-OstapNeural",
+        "Locale": "uk-UA",
+        "Gender": "Male",
+        "FriendlyName": "Microsoft Ostap Online (Natural) - Ukrainian (Ukraine)",
+        "VoiceTag": {"VoicePersonalities": ["Warm", "Positive"]},
+    },
+    {
+        "ShortName": "pl-PL-ZofiaNeural",
+        "Locale": "pl-PL",
+        "Gender": "Female",
+        "FriendlyName": "Microsoft Zofia Online (Natural) - Polish (Poland)",
+    },
+    {
+        "ShortName": "pl-PL-MarekNeural",
+        "Locale": "pl-PL",
+        "Gender": "Male",
+        "FriendlyName": "Microsoft Marek Online (Natural) - Polish (Poland)",
+    },
+    {
+        "ShortName": "en-US-AndrewNeural",
+        "Locale": "en-US",
+        "Gender": "Male",
+        "FriendlyName": "Microsoft Andrew Online (Natural) - English (United States)",
+    },
+    {
+        "ShortName": "en-US-AvaNeural",
+        "Locale": "en-US",
+        "Gender": "Female",
+        "FriendlyName": "Microsoft Ava Online (Natural) - English (United States)",
+    },
+]
+
+
 class CommandTests(unittest.TestCase):
     def setUp(self):
         load_plugin_package()
         self.commands = importlib.import_module(f"{PACKAGE_NAME}.commands")
 
-    def test_apply_preset_writes_edge_voice_config(self):
-        with fake_config_module() as writes:
-            result = self.commands._apply_preset("ua")
+    def test_handle_tvoice_list_returns_voice_catalog_not_status(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            result = self.commands.handle_tvoice("list")
 
-        self.assertIn("ua-ostap", result)
-        self.assertIn(("tts.provider", "edge"), writes)
-        self.assertIn(("tts.edge.voice", "uk-UA-OstapNeural"), writes)
-        self.assertIn(("tts.default_voice_preset", "ua-ostap"), writes)
-        self.assertIn(("tts.language_voice_map.pl", "pl-marek"), writes)
-
-    def test_handle_tvoice_list_returns_preset_list_not_status(self):
-        result = self.commands.handle_tvoice("list")
-
-        self.assertIn("Available TVoice presets:", result)
-        self.assertIn("ua-ostap", result)
-        self.assertIn("pl-marek", result)
+        self.assertIn("Available Edge TTS voices:", result)
+        self.assertIn("uk-UA-OstapNeural", result)
+        self.assertIn("pl-PL-ZofiaNeural", result)
         self.assertNotIn("TVoice status:", result)
 
-    def test_handle_tvoice_presets_returns_preset_list(self):
-        result = self.commands.handle_tvoice("presets")
-        self.assertIn("Available TVoice presets:", result)
+    def test_handle_tvoice_list_searches_runtime_catalog_by_locale_and_gender(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            uk_result = self.commands.handle_tvoice("list uk female")
+            pl_result = self.commands.handle_tvoice("list pl female")
+            en_result = self.commands.handle_tvoice("list en male")
 
-    def test_handle_tvoice_auto_uses_polish_preset(self):
+        self.assertIn("uk-UA-PolinaNeural", uk_result)
+        self.assertIn("Female", uk_result)
+        self.assertNotIn("uk-UA-OstapNeural", uk_result)
+        self.assertIn("pl-PL-ZofiaNeural", pl_result)
+        self.assertIn("en-US-AndrewNeural", en_result)
+        self.assertNotIn("en-US-AvaNeural", en_result)
+
+    def test_handle_tvoice_set_accepts_runtime_edge_voice_id(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("set en-US-AndrewNeural")
+
+        self.assertIn("en-US-AndrewNeural", result)
+        self.assertIn(("tts.provider", "edge"), writes)
+        self.assertIn(("tts.edge.voice", "en-US-AndrewNeural"), writes)
+        self.assertNotIn(("tts.default_voice_preset", "en-US-AndrewNeural"), writes)
+
+    def test_handle_tvoice_set_rejects_unknown_voice_when_catalog_available(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("set en-US-NotAVoiceNeural")
+
+        self.assertIn("Unknown Edge voice", result)
+        self.assertIn("en-US-AndrewNeural", result)
+        self.assertEqual([], writes)
+
+    def test_handle_tvoice_set_rejects_removed_shortcut_aliases(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("set ua-ostap")
+
+        self.assertIn("Unknown Edge voice", result)
+        self.assertIn("uk-UA-OstapNeural", result)
+        self.assertEqual([], writes)
+
+    def test_handle_tvoice_rejects_removed_shortcut_command(self):
         with fake_config_module() as writes:
-            result = self.commands.handle_tvoice("auto Cześć, mówimy po polsku")
+            result = self.commands.handle_tvoice("ua-ostap")
 
-        self.assertIn("pl-marek", result)
+        self.assertIn("Unknown TVoice command", result)
+        self.assertIn("/tvoice set <edge-voice-id>", result)
+        self.assertEqual([], writes)
+
+    def test_handle_tvoice_help_omits_shortcuts_and_presets(self):
+        result = self.commands.handle_tvoice("help")
+
+        self.assertIn("/tvoice set <edge-voice-id>", result)
+        self.assertNotIn("ua-ostap", result)
+        self.assertNotIn("pl-marek", result)
+        self.assertNotIn("preset", result.lower())
+
+    def test_handle_tvoice_list_falls_back_when_edge_tts_fetch_fails(self):
+        with fake_edge_tts_module(error=RuntimeError("offline")):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("list en male")
+
+        self.assertIn("en-US-AndrewNeural", result)
+        self.assertIn("fallback", result.lower())
+        self.assertEqual([], writes)
+
+    def test_handle_tvoice_refresh_refetches_runtime_catalog(self):
+        voices = [next(voice for voice in SAMPLE_EDGE_VOICES if voice["ShortName"] == "en-US-AndrewNeural")]
+        brian = {
+            "ShortName": "en-US-BrianNeural",
+            "Locale": "en-US",
+            "Gender": "Male",
+            "FriendlyName": "Microsoft Brian Online (Natural) - English (United States)",
+        }
+
+        with fake_edge_tts_module(voices):
+            first = self.commands.handle_tvoice("list en male")
+            voices[:] = [brian]
+            cached = self.commands.handle_tvoice("list en male")
+            refreshed = self.commands.handle_tvoice("refresh")
+            after_refresh = self.commands.handle_tvoice("list en male")
+
+        self.assertIn("en-US-AndrewNeural", first)
+        self.assertIn("en-US-AndrewNeural", cached)
+        self.assertIn("refreshed", refreshed.lower())
+        self.assertIn("en-US-BrianNeural", after_refresh)
+        self.assertNotIn("en-US-AndrewNeural", after_refresh)
+
+    def test_handle_tvoice_auto_uses_polish_edge_voice_id(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("auto Cześć, mówimy po polsku")
+
+        self.assertIn("pl-PL-MarekNeural", result)
+        self.assertIn(("tts.provider", "edge"), writes)
         self.assertIn(("tts.edge.voice", "pl-PL-MarekNeural"), writes)
+        self.assertNotIn(("tts.default_voice_preset", "pl-marek"), writes)
 
-    def test_unknown_preset_lists_known_presets(self):
+    def test_handle_tvoice_auto_uses_ukrainian_edge_voice_id(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("auto Привіт, говоримо українською")
+
+        self.assertIn("uk-UA-OstapNeural", result)
+        self.assertIn(("tts.provider", "edge"), writes)
+        self.assertIn(("tts.edge.voice", "uk-UA-OstapNeural"), writes)
+        self.assertNotIn(("tts.default_voice_preset", "ua-ostap"), writes)
+
+    def test_handle_tvoice_auto_uses_english_male_voice(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            with fake_config_module() as writes:
+                result = self.commands.handle_tvoice("auto Hello, this is an English voice test")
+
+        self.assertIn("en-US-AndrewNeural", result)
+        self.assertIn(("tts.provider", "edge"), writes)
+        self.assertIn(("tts.edge.voice", "en-US-AndrewNeural"), writes)
+        self.assertNotIn(("tts.default_voice_preset", "en-US-AndrewNeural"), writes)
+
+    def test_unknown_command_points_to_supported_command_surface(self):
         result = self.commands.handle_tvoice("does-not-exist")
-        self.assertIn("Unknown preset", result)
-        self.assertIn("ua-ostap", result)
-        self.assertIn("pl-marek", result)
+        self.assertIn("Unknown TVoice command", result)
+        self.assertIn("/tvoice list [query]", result)
+        self.assertIn("/tvoice set <edge-voice-id>", result)
+        self.assertNotIn("ua-ostap", result)
 
     def test_status_reports_config_and_runtime_dependencies(self):
         cfg = {
             "tts": {
                 "provider": "edge",
                 "edge": {"voice": "uk-UA-OstapNeural"},
-                "default_voice_preset": "ua-ostap",
-                "language_voice_map": {"uk": "ua-ostap", "pl": "pl-marek"},
             },
             "stt": {"provider": "groq", "groq": {"model": "whisper-large-v3-turbo"}},
         }

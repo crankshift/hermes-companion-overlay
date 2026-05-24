@@ -89,8 +89,8 @@ def register(ctx):
     ctx.register_command(
         "tvoice",
         handle_tvoice,
-        "Switch Telegram/CLI Edge TTS voice preset: status, ua-ostap, pl-marek, auto <text>",
-        args_hint="status|ua-ostap|pl-marek|auto <text>",
+        "Switch Telegram/CLI Edge TTS voice: status, list [query], set <voice-id>, refresh",
+        args_hint="status|list [query]|set <voice-id>|refresh|auto <text>",
     )
 ```
 

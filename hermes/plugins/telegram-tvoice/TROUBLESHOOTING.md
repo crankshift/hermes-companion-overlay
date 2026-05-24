@@ -10,7 +10,7 @@
 
 ## Groq key is missing
 
-Groq is only needed for STT from Telegram voice notes. Edge TTS and `/tvoice` preset switching work without it.
+Groq is only needed for STT from Telegram voice notes. Edge TTS and `/tvoice` voice switching work without it.
 
 ```bash
 hermes config set GROQ_API_KEY '<your-groq-api-key>'

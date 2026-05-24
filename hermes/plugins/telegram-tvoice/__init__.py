@@ -1,4 +1,4 @@
-"""Hermes plugin: /tvoice voice preset switching.
+"""Hermes plugin: /tvoice Edge TTS voice switching.
 
 User-local Hermes plugin that registers an in-session slash command with
 ctx.register_command(). It edits profile-level Hermes config only; it does not
@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from .audio import _convert_audio_to_telegram_voice
 from .commands import (
-    _apply_preset,
     _auto,
     _detect_language,
-    _format_preset_list,
     _split_args,
     _status,
     _usage,
@@ -31,11 +29,9 @@ from .sanitizer import (
 )
 
 __all__ = [
-    "_apply_preset",
     "_auto",
     "_convert_audio_to_telegram_voice",
     "_detect_language",
-    "_format_preset_list",
     "_install_telegram_voice_delivery_patch",
     "_install_tts_footer_filter",
     "_install_tts_text_filter",
@@ -59,6 +55,6 @@ def register(ctx) -> None:
     ctx.register_command(
         "tvoice",
         handle_tvoice,
-        "Switch Telegram/CLI Edge TTS voice preset: status, list, ua-ostap, pl-marek, auto <text>",
-        args_hint="status|list|ua-ostap|pl-marek|auto <text>",
+        "Switch Telegram/CLI Edge TTS voice: status, list [query], set <voice-id>, refresh",
+        args_hint="status|list [query]|set <voice-id>|refresh|auto <text>",
     )

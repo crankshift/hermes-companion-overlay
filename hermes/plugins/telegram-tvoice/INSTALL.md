@@ -1,6 +1,6 @@
 # telegram-tvoice install runbook
 
-`telegram-tvoice` is a user-local Hermes plugin that adds `/tvoice` for switching Telegram/CLI Edge TTS between Ukrainian Ostap and Polish Marek. It also strips Hermes runtime footers and emoji from spoken TTS, and tries to convert Telegram TTS audio to OGG/Opus voice bubbles before upload.
+`telegram-tvoice` is a user-local Hermes plugin that adds `/tvoice` for switching Telegram/CLI Edge TTS voices by real Edge voice ID. It also strips Hermes runtime footers and emoji from spoken TTS, and tries to convert Telegram TTS audio to OGG/Opus voice bubbles before upload.
 
 This repository is source-only. Runtime activation happens by copying or linking this plugin folder into `$HERMES_HOME/plugins/telegram-tvoice`; do not symlink the whole repository over `$HERMES_HOME`.
 
@@ -47,12 +47,11 @@ plugins:
 
 ## Minimal Config
 
-TTS preset switching:
+TTS voice switching:
 
 ```bash
 hermes config set tts.provider edge
 hermes config set tts.edge.voice uk-UA-OstapNeural
-hermes config set tts.default_voice_preset ua-ostap
 hermes config set voice.auto_tts false
 ```
 
@@ -65,7 +64,7 @@ hermes config set stt.groq.model whisper-large-v3-turbo
 hermes config set GROQ_API_KEY '<your-groq-api-key>'
 ```
 
-`/tvoice ua-ostap`, `/tvoice pl-marek`, and `/tvoice auto <text>` will write the full preset map when used.
+`/tvoice list [query]` searches the runtime Edge TTS catalog, `/tvoice set <voice-id>` selects a real Edge voice ID such as `uk-UA-OstapNeural` or `en-US-AndrewNeural`, and `/tvoice refresh` refetches the in-memory catalog. The plugin falls back to a small bundled catalog when `edge_tts` voice discovery is unavailable.
 
 ## Source-Only Verification
 
@@ -91,10 +90,13 @@ Then try:
 ```text
 /tvoice status
 /tvoice list
-/tvoice ua-ostap
-/tvoice pl-marek
+/tvoice list en male
+/tvoice set en-US-AndrewNeural
+/tvoice set uk-UA-OstapNeural
+/tvoice refresh
 /tvoice auto Cześć, mówimy po polsku
 /tvoice auto Привіт, говоримо українською
+/tvoice auto Hello, this is English
 ```
 
 See `TROUBLESHOOTING.md` for runtime failure modes and `DEVELOPMENT.md` for source maintenance notes.

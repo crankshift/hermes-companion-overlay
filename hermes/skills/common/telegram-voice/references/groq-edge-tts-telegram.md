@@ -53,16 +53,6 @@ tts:
   edge:
     voice: uk-UA-OstapNeural
     speed: 1.0
-  default_voice_preset: ua-ostap
-  voice_presets:
-    ua-ostap:
-      provider: edge
-      voice: uk-UA-OstapNeural
-      label: Ukrainian Ostap
-    pl-marek:
-      provider: edge
-      voice: pl-PL-MarekNeural
-      label: Polish Marek
 ```
 
 ## Runtime command sketch
@@ -71,20 +61,19 @@ Preferred core-command UX when editing Hermes core in a safe checkout:
 
 ```text
 /voice tts
-/voice preset
-/voice presets
-/voice preset ua-ostap
-/voice preset pl-marek
-/voice preset reset
+/voice voices
+/voice set <edge-voice-id>
+/voice reset
 /voice status
 ```
 
 No-core-edit plugin fallback:
 
 ```text
-/voicepreset ua-ostap
-/voicepreset pl-marek
-/voicepreset status
+/tvoice list [query]
+/tvoice set <edge-voice-id>
+/tvoice refresh
+/tvoice status
 ```
 
 Hermes general plugins can register slash commands with `ctx.register_command(name, handler, description)`. These commands work in CLI and gateway contexts and are surfaced in help/autocomplete/Telegram bot menus. Built-in command names win conflicts, so a plugin should not try to replace `/voice`; use a separate command name. Plugin handlers are enough for profile/global config toggles or helper-script calls, but not proven sufficient for clean per-chat/per-topic TTS context injection without core support.
@@ -94,10 +83,10 @@ Hermes general plugins can register slash commands with `ctx.register_command(na
 Likely code files:
 
 - `tools/transcription_tools.py` — only if `stt.groq.model` lookup needs improvement.
-- `tools/tts_tool.py` — voice preset resolution and session override merge.
-- `gateway/run.py` — `/voice preset` command handling and per-chat state.
-- `gateway/session_context.py` — context vars for runtime TTS provider/preset/voice overrides.
-- `hermes_cli/config.py` — default config/comments for Groq and voice presets.
+- `tools/tts_tool.py` — voice ID resolution and session override merge.
+- `gateway/run.py` — `/voice set <edge-voice-id>` command handling and per-chat state.
+- `gateway/session_context.py` — context vars for runtime TTS provider/voice overrides.
+- `hermes_cli/config.py` — default config/comments for Groq and voice IDs.
 - `hermes_cli/commands.py` — help/subcommand registry updates.
 - `gateway/platforms/telegram.py` — only if Telegram send behavior/menu needs updates.
 
@@ -116,7 +105,7 @@ Likely test files:
 - Edge TTS uses runtime voice override when session context supplies one.
 - Telegram platform context triggers OGG/Opus output/conversion.
 - `.ogg` / `.opus` delivery goes through Telegram `send_voice`.
-- `/voice preset <alias>` updates in-memory and persisted state without gateway restart.
+- `/voice set <edge-voice-id>` updates in-memory and persisted state without gateway restart.
 - Parallel chats/topics cannot bleed voice overrides into each other.
 
 ## Audio conversion command
