@@ -11,7 +11,7 @@ description: >-
   hardcoded. Use this especially when a Hermes change could tempt edits to
   active core, gateway, toolset, provider, or installed source files: default to
   overlay/customization layers and protect live installs.
-version: 1.2.0
+version: 1.3.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -98,6 +98,32 @@ Prefer supported, update-resilient layers:
 When the user explicitly asks to contribute upstream core support, use a non-live checkout/worktree or a user-approved source repository. Never treat the active installed Hermes tree as the development workspace.
 
 If another Hermes skill or local note suggests live-install surgery for a narrower area, this overlay-first, core-protected rule wins unless the user explicitly asks for upstream contribution work in a safe checkout/worktree.
+
+## User-created skill location rule
+
+When creating a new Hermes skill for the user, default to the `user` category. With Hermes' `skill_manage create` action, pass `category: user` so Hermes writes the skill under `$HERMES_HOME/skills/user/<skill-name>/`.
+
+For repo-backed user skills, `$HERMES_HOME/skills/user` should be a symlink to `$HOME/hermes/user`. Before creating the skill, verify the symlink when possible:
+
+```sh
+HERMES_HOME=${HERMES_HOME:-$HOME/.hermes}
+realpath "$HERMES_HOME/skills/user"
+```
+
+The expected target is `$HOME/hermes/user`. If the path is missing or resolves elsewhere, tell the user before creating the skill and prefer setting up or fixing the symlink:
+
+```sh
+HERMES_HOME=${HERMES_HOME:-$HOME/.hermes}
+mkdir -p "$HOME/hermes/user" "$HERMES_HOME/skills"
+
+if [ ! -e "$HERMES_HOME/skills/user" ] && [ ! -L "$HERMES_HOME/skills/user" ]; then
+  ln -s "$HOME/hermes/user" "$HERMES_HOME/skills/user"
+fi
+
+realpath "$HERMES_HOME/skills/user"
+```
+
+Do not rely on `skills.external_dirs` as the default creation target for new skills. External directories are discoverable, but new agent-created skills are written to the primary Hermes skills tree unless a category path under `$HERMES_HOME/skills/` routes them elsewhere.
 
 ## Portable common-asset discipline
 
