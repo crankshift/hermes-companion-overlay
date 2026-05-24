@@ -183,6 +183,45 @@ def _telegram_menu_limit(args: tuple[Any, ...], kwargs: dict[str, Any]) -> int |
     return limit if limit > 0 else None
 
 
+def _looks_like_menu_command_list(value: Any) -> bool:
+    if not isinstance(value, (list, tuple)):
+        return False
+    if not value:
+        return True
+    first = value[0]
+    if isinstance(first, dict):
+        return bool(first.get("command") or first.get("name"))
+    if isinstance(first, (tuple, list)):
+        return bool(first)
+    return bool(getattr(first, "command", None) or getattr(first, "name", None))
+
+
+def _with_tvoice_menu_command(menu_commands: Any, limit: int | None) -> Any:
+    commands_list = list(menu_commands or [])
+    sample = commands_list[0] if commands_list else None
+    tvoice_entry = _tvoice_menu_entry(sample)
+
+    updated: list[Any] = []
+    found_tvoice = False
+    for command in commands_list:
+        if _menu_command_name(command) == "tvoice":
+            updated.append(_tvoice_menu_entry(command))
+            found_tvoice = True
+        else:
+            updated.append(command)
+
+    if not found_tvoice:
+        if limit is not None and len(updated) >= limit:
+            updated = updated[: max(limit - 1, 0)]
+        updated.append(tvoice_entry)
+
+    if limit is not None:
+        updated = updated[:limit]
+    if isinstance(menu_commands, tuple):
+        return tuple(updated)
+    return updated
+
+
 def _install_tvoice_telegram_menu_wrapper(commands: Any) -> None:
     original = getattr(commands, "telegram_menu_commands", None)
     if not callable(original) or getattr(original, "_telegram_tvoice_menu_patch_installed", False):
@@ -191,30 +230,15 @@ def _install_tvoice_telegram_menu_wrapper(commands: Any) -> None:
     @functools.wraps(original)
     def _telegram_menu_commands_with_tvoice(*args: Any, **kwargs: Any) -> Any:
         raw_result = original(*args, **kwargs)
-        commands_list = list(raw_result or [])
-        sample = commands_list[0] if commands_list else None
-        tvoice_entry = _tvoice_menu_entry(sample)
         limit = _telegram_menu_limit(args, kwargs)
 
-        updated: list[Any] = []
-        found_tvoice = False
-        for command in commands_list:
-            if _menu_command_name(command) == "tvoice":
-                updated.append(_tvoice_menu_entry(command))
-                found_tvoice = True
-            else:
-                updated.append(command)
-
-        if not found_tvoice:
-            if limit is not None and len(updated) >= limit:
-                updated = updated[: max(limit - 1, 0)]
-            updated.append(tvoice_entry)
-
-        if limit is not None:
-            updated = updated[:limit]
-        if isinstance(raw_result, tuple):
-            return tuple(updated)
-        return updated
+        if (
+            isinstance(raw_result, tuple)
+            and len(raw_result) == 2
+            and _looks_like_menu_command_list(raw_result[0])
+        ):
+            return _with_tvoice_menu_command(raw_result[0], limit), raw_result[1]
+        return _with_tvoice_menu_command(raw_result, limit)
 
     setattr(_telegram_menu_commands_with_tvoice, "_telegram_tvoice_menu_patch_installed", True)
     setattr(_telegram_menu_commands_with_tvoice, "_telegram_tvoice_original", original)

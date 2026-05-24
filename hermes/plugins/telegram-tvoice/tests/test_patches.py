@@ -40,7 +40,7 @@ def fake_telegram_adapter(adapter_cls):
 
 
 @contextlib.contextmanager
-def fake_hermes_commands_module(menu_commands):
+def fake_hermes_commands_module(menu_commands, hidden_count=None):
     module_names = ["hermes_cli", "hermes_cli.commands"]
     missing = object()
     originals = {name: sys.modules.get(name, missing) for name in module_names}
@@ -50,7 +50,10 @@ def fake_hermes_commands_module(menu_commands):
     commands._TELEGRAM_MENU_PRIORITY = tuple(name for name, _description in menu_commands)
 
     def telegram_menu_commands(max_commands=30):
-        return list(menu_commands[:max_commands])
+        visible = list(menu_commands[:max_commands])
+        if hidden_count is not None:
+            return visible, hidden_count
+        return visible
 
     commands.telegram_menu_commands = telegram_menu_commands
     hermes_cli.commands = commands
@@ -239,6 +242,18 @@ class PatchTests(unittest.TestCase):
         self.assertNotIn("ua-ostap", descriptions["tvoice"])
         self.assertNotIn("pl-marek", descriptions["tvoice"])
         self.assertNotIn("preset", descriptions["tvoice"].lower())
+
+    def test_tvoice_preserves_telegram_menu_commands_tuple_result(self):
+        menu_commands = [(f"cmd{i}", f"description {i}") for i in range(35)]
+
+        with fake_hermes_commands_module(menu_commands, hidden_count=5) as commands:
+            self.patches._promote_tvoice_in_telegram_menu()
+            visible, hidden_count = commands.telegram_menu_commands(max_commands=30)
+
+        names = [name for name, _description in visible]
+        self.assertIn("tvoice", names)
+        self.assertLessEqual(len(visible), 30)
+        self.assertEqual(hidden_count, 5)
 
 
 if __name__ == "__main__":
