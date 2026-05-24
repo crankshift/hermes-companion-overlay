@@ -1,0 +1,66 @@
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*.p12
+*.token
+*secret*
+*secrets*
+auth.json
+
+# Hermes workspace-local planning/checkpoint artifacts
+.hermes/
+
+# Hermes live runtime/state — never commit local runtime guts
+config.yaml
+config.local.yaml
+profiles/
+memories/
+state.db
+state.db-*
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+sessions/
+logs/
+cache/
+tmp/
+cron/
+audio_cache/
+voice-memos/
+Downloads/
+.hub/
+.usage.json
+
+# Local Telegram/runtime artifacts
+sticker_catalog.json
+TELEGRAM_MESSAGING.md
+TELEGRAM_STICKERS.md
+
+# Backups / transient migration artifacts
+backups/
+*.bak
+*.backup
+*.tmp
+
+# Python/cache/editor junk
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+.vscode/
+.idea/
+.codex/
+.claude/
+.claude.json
+*.swp
+*.swo
+
+# OS/filesystem noise
+Thumbs.db
