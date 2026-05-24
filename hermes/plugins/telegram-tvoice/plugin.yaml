@@ -1,5 +1,5 @@
 name: telegram-tvoice
-version: "1.2.0"
+version: "1.3.0"
 description: Telegram/CLI slash command for switching Edge TTS voice presets; also keeps Telegram voice replies as OGG/Opus bubbles and strips Hermes runtime footers/emoji from spoken TTS.
 provides_commands:
   - tvoice
