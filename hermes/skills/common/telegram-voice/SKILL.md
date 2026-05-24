@@ -122,8 +122,6 @@ tvoice auto "Привіт, говоримо українською"
 
 Prefer plugin-only for Telegram voice switching: use a profile/user plugin under `~/.hermes/plugins/telegram-tvoice/` or another discovered Hermes plugin root, and do **not** create or leave `~/.hermes/scripts/` helper folders/symlinks for this flow unless the user explicitly asks for a shell helper. Do **not** move personal helpers into hypothetical live-source paths like `~/.hermes/hermes-agent/tools/_user/` or `~/.hermes/hermes-agent/tools/_custom/`; those are not the safe extension surface. If a temporary helper was replaced by a plugin, remove the helper folder and any `~/.local/bin/` aliases that point to it.
 
-See `references/path-a-b-helper-layout.md` for the session-derived layout details and caveats.
-
 Important caveat: this plugin changes profile-level `tts.edge.voice`; it is safe and source-free, but it is not true per-chat runtime state. If the running gateway does not reload TTS config per call, tell the user to `/restart` once. True no-restart per-chat switching still requires Hermes core support via gateway state + `gateway.session_context`.
 
 ## Runtime Voice Switching Pattern
@@ -171,9 +169,9 @@ hermes plugins enable telegram-tvoice
 
 Hermes plugins can register slash commands with `ctx.register_command(name, handler, description)` and those commands are exposed in CLI/gateway help, autocomplete, and Telegram bot menus after the plugin is enabled and the session/gateway restarts. Do **not** try to replace the built-in `/voice` command from a plugin: built-in command names win on conflict. A plugin command can safely update profile/global TTS config or call a helper, but true per-chat/per-topic voice overrides may still require core support via gateway state/session context.
 
-Telegram menu caveat: command registration and visible Telegram BotCommand menus are not the same thing. Hermes may cap the visible Telegram menu (observed: 30 commands), so a plugin command can be enabled and manually dispatchable but still absent from Telegram's `/` menu. For `telegram-tvoice`, first verify `get_plugin_commands()` and `telegram_menu_commands(max_commands=30)` before blaming BotFather or plugin loading. If the user wants a plugin-only fix, promote `/tvoice` into Hermes' in-memory Telegram menu priority during plugin `register(ctx)` and then restart the gateway later to publish a new `set_my_commands` payload. See `references/telegram-tvoice-menu-cap.md` for the exact diagnostic and workaround.
+Telegram menu caveat: command registration and visible Telegram BotCommand menus are not the same thing. Hermes may cap the visible Telegram menu (observed: 30 commands), so a plugin command can be enabled and manually dispatchable but still absent from Telegram's `/` menu. For `telegram-tvoice`, first verify `get_plugin_commands()` and `telegram_menu_commands(max_commands=30)` before blaming BotFather or plugin loading. If the user wants a plugin-only fix, promote `/tvoice` into Hermes' in-memory Telegram menu priority during plugin `register(ctx)` and then restart the gateway later to publish a new `set_my_commands` payload.
 
-TTS sanitizer caveat: getting Telegram delivery into a real OGG/Opus voice bubble does not guarantee the spoken content is clean. If runtime footers or emoji are read aloud, cover the gateway auto-TTS path (`BasePlatformAdapter.prepare_tts_text`) and direct TTS tool path (`tools.tts_tool.text_to_speech_tool`) in the plugin. See `references/telegram-tvoice-tts-sanitizer.md` for the session-derived implementation pattern and tests.
+TTS sanitizer caveat: getting Telegram delivery into a real OGG/Opus voice bubble does not guarantee the spoken content is clean. If runtime footers or emoji are read aloud, cover the gateway auto-TTS path (`BasePlatformAdapter.prepare_tts_text`) and direct TTS tool path (`tools.tts_tool.text_to_speech_tool`) in the plugin.
 
 Recommended voice config:
 
@@ -208,8 +206,6 @@ When writing an implementation plan for Telegram voice improvements, include:
 - Tests for no-restart `/voice set <edge-voice-id>` state updates and no cross-chat bleed.
 - Manual validation steps in a test Telegram chat only after user approval.
 
-See `references/groq-edge-tts-telegram.md` for the session-derived design notes and concrete test targets.
-
 ## Common Pitfalls
 
 1. **Confusing Groq and Grok.** Groq STT uses `GROQ_API_KEY` and Whisper-compatible models. xAI Grok STT uses xAI credentials and is a different provider.
@@ -218,7 +214,7 @@ See `references/groq-edge-tts-telegram.md` for the session-derived design notes 
 4. **Forgetting ffmpeg.** Edge TTS output can be fine but Telegram voice delivery still fail to become a voice bubble if MP3 is not converted to Opus/OGG.
 5. **Letting per-chat voice state bleed.** Never store current voice in a process-global mutable var that concurrent Telegram messages can overwrite.
 6. **Testing against the real profile.** Use temporary `HERMES_HOME` for automated tests. Live Telegram tests need explicit user approval.
-7. **Telegram menu cap hiding plugin commands.** Plugin slash commands can be registered and manually dispatchable while still missing from Telegram's visible `/` menu because Hermes caps `set_my_commands` output. Check plugin command registration and `telegram_menu_commands(max_commands=30)` before chasing BotFather/privacy/plugin-enable ghosts. For `telegram-tvoice`, use the plugin-only priority promotion pattern in `references/telegram-tvoice-menu-cap.md`; apply the menu update with a gateway restart only when the user allows it.
+7. **Telegram menu cap hiding plugin commands.** Plugin slash commands can be registered and manually dispatchable while still missing from Telegram's visible `/` menu because Hermes caps `set_my_commands` output. Check plugin command registration and `telegram_menu_commands(max_commands=30)` before chasing BotFather/privacy/plugin-enable ghosts. For `telegram-tvoice`, use the plugin-only priority promotion pattern; apply the menu update with a gateway restart only when the user allows it.
 8. **Footer or emoji read aloud by TTS.** Gateway runtime footers are appended after the agent's final text, so `transform_llm_output` hooks may run too early to stop them being spoken. Telegram auto-TTS does **not** rely only on `tools.tts_tool._strip_markdown_for_tts`; it calls `BasePlatformAdapter.prepare_tts_text()` and then `tools.tts_tool.text_to_speech_tool()`. For plugin-only fixes, patch/wrap both `BasePlatformAdapter.prepare_tts_text` and `tools.tts_tool.text_to_speech_tool` (optionally `_strip_markdown_for_tts` for streaming/direct paths) with a sanitizer that removes final Hermes runtime footer lines (`model · 17% · ~/cwd`) and emoji/smileys before synthesis. Keep the visible text/caption unchanged.
 9. **MP3 still reaches Telegram adapter.** Even when ffmpeg/libopus exists, a caller can hand `TelegramAdapter.send_voice()` an MP3 path and Telegram will route it as `send_audio`. A plugin-only safety shim can wrap `TelegramAdapter.send_voice`, convert MP3/M4A/WAV/FLAC to OGG/Opus immediately before upload, then call the original method with the converted `.ogg` path.
 
