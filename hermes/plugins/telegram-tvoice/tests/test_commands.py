@@ -98,10 +98,28 @@ SAMPLE_EDGE_VOICES = [
         "FriendlyName": "Microsoft Andrew Online (Natural) - English (United States)",
     },
     {
+        "ShortName": "en-US-BrianMultilingualNeural",
+        "Locale": "en-US",
+        "Gender": "Male",
+        "FriendlyName": "Microsoft BrianMultilingual Online (Natural) - English (United States)",
+    },
+    {
         "ShortName": "en-US-AvaNeural",
         "Locale": "en-US",
         "Gender": "Female",
         "FriendlyName": "Microsoft Ava Online (Natural) - English (United States)",
+    },
+    {
+        "ShortName": "es-GT-AndresNeural",
+        "Locale": "es-GT",
+        "Gender": "Male",
+        "FriendlyName": "Microsoft Andres Online (Natural) - Spanish (Guatemala)",
+    },
+    {
+        "ShortName": "es-UY-MateoNeural",
+        "Locale": "es-UY",
+        "Gender": "Male",
+        "FriendlyName": "Microsoft Mateo Online (Natural) - Spanish (Uruguay)",
     },
 ]
 
@@ -132,6 +150,34 @@ class CommandTests(unittest.TestCase):
         self.assertIn("pl-PL-ZofiaNeural", pl_result)
         self.assertIn("en-US-AndrewNeural", en_result)
         self.assertNotIn("en-US-AvaNeural", en_result)
+
+    def test_handle_tvoice_list_country_code_matches_locale_region_only(self):
+        with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
+            result = self.commands.handle_tvoice("list ua")
+
+        self.assertIn("uk-UA-OstapNeural", result)
+        self.assertIn("uk-UA-PolinaNeural", result)
+        self.assertNotIn("en-US-BrianMultilingualNeural", result)
+        self.assertNotIn("es-GT-AndresNeural", result)
+        self.assertNotIn("es-UY-MateoNeural", result)
+
+    def test_handle_tvoice_list_country_code_shows_all_matches(self):
+        voices = [
+            {
+                "ShortName": f"zz-UA-Test{i:02d}Neural",
+                "Locale": "zz-UA",
+                "Gender": "Female" if i % 2 else "Male",
+                "FriendlyName": f"Test voice {i:02d}",
+            }
+            for i in range(25)
+        ]
+
+        with fake_edge_tts_module(voices):
+            result = self.commands.handle_tvoice("list ua")
+
+        self.assertIn("zz-UA-Test00Neural", result)
+        self.assertIn("zz-UA-Test24Neural", result)
+        self.assertNotIn("Showing first 20", result)
 
     def test_handle_tvoice_set_accepts_runtime_edge_voice_id(self):
         with fake_edge_tts_module(SAMPLE_EDGE_VOICES):
@@ -176,6 +222,15 @@ class CommandTests(unittest.TestCase):
         self.assertNotIn("ua-ostap", result)
         self.assertNotIn("pl-marek", result)
         self.assertNotIn("preset", result.lower())
+
+    def test_handle_tvoice_without_args_returns_help(self):
+        result = self.commands.handle_tvoice("")
+
+        self.assertIn("TVoice commands:", result)
+        self.assertIn("/tvoice status", result)
+        self.assertIn("/tvoice list [country-code|query]", result)
+        self.assertIn("/tvoice set <edge-voice-id>", result)
+        self.assertNotIn("TVoice status:", result)
 
     def test_handle_tvoice_list_falls_back_when_edge_tts_fetch_fails(self):
         with fake_edge_tts_module(error=RuntimeError("offline")):
@@ -241,7 +296,7 @@ class CommandTests(unittest.TestCase):
     def test_unknown_command_points_to_supported_command_surface(self):
         result = self.commands.handle_tvoice("does-not-exist")
         self.assertIn("Unknown TVoice command", result)
-        self.assertIn("/tvoice list [query]", result)
+        self.assertIn("/tvoice list [country-code|query]", result)
         self.assertIn("/tvoice set <edge-voice-id>", result)
         self.assertNotIn("ua-ostap", result)
 

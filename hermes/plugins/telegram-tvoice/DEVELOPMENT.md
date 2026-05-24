@@ -38,8 +38,8 @@ The real ffmpeg conversion test may skip when `ffmpeg` or `ffprobe` are unavaila
 - Patch installers must be idempotent because plugin registration can be repeated in tests or a reloaded runtime
 - `_install_telegram_voice_delivery_patch()` must return cleanly when `TelegramAdapter.send_voice` is missing or not callable
 - Audio conversion must keep ffmpeg options before the output path and include `-nostdin`
-- `/tvoice list [query]` searches the Edge TTS voice catalog
+- `/tvoice list [country-code|query]` searches the Edge TTS voice catalog; a two-letter country/region query such as `ua` shows all matching locale-region voices without the default 20-item cap
 - `/tvoice set <edge-voice-id>` should only write `tts.provider` and `tts.edge.voice`
-- Shortcut aliases such as `ua-ostap`, `pl-marek`, `ua`, and `pl` are intentionally not supported
+- Shortcut aliases such as `ua-ostap`, `pl-marek`, `ua`, and `pl` are intentionally not supported as set commands or presets
 
 Do not commit `__pycache__/`, test artifacts, secrets, or runtime-generated files.

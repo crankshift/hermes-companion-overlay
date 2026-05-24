@@ -64,7 +64,7 @@ hermes config set stt.groq.model whisper-large-v3-turbo
 hermes config set GROQ_API_KEY '<your-groq-api-key>'
 ```
 
-`/tvoice list [query]` searches the runtime Edge TTS catalog, `/tvoice set <voice-id>` selects a real Edge voice ID such as `uk-UA-OstapNeural` or `en-US-AndrewNeural`, and `/tvoice refresh` refetches the in-memory catalog. The plugin falls back to a small bundled catalog when `edge_tts` voice discovery is unavailable.
+`/tvoice list [country-code|query]` searches the runtime Edge TTS catalog, `/tvoice list ua` shows all voices with region `UA`, `/tvoice set <voice-id>` selects a real Edge voice ID such as `uk-UA-OstapNeural` or `en-US-AndrewNeural`, and `/tvoice refresh` refetches the in-memory catalog. The plugin falls back to a small bundled catalog when `edge_tts` voice discovery is unavailable.
 
 ## Source-Only Verification
 

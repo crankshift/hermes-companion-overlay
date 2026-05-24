@@ -237,8 +237,9 @@ class PatchTests(unittest.TestCase):
             visible = commands.telegram_menu_commands(max_commands=30)
 
         descriptions = {name: description for name, description in visible}
-        self.assertIn("list [query]", descriptions["tvoice"])
+        self.assertIn("list [country-code|query]", descriptions["tvoice"])
         self.assertIn("set <voice-id>", descriptions["tvoice"])
+        self.assertIn("auto <text>", descriptions["tvoice"])
         self.assertNotIn("ua-ostap", descriptions["tvoice"])
         self.assertNotIn("pl-marek", descriptions["tvoice"])
         self.assertNotIn("preset", descriptions["tvoice"].lower())

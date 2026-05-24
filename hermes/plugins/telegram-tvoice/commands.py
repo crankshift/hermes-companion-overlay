@@ -21,11 +21,11 @@ def _usage() -> str:
     return (
         "TVoice commands:\n"
         "  /tvoice status\n"
-        "  /tvoice list [query]\n"
+        "  /tvoice list [country-code|query]\n"
         "  /tvoice set <edge-voice-id>\n"
         "  /tvoice refresh\n"
         "  /tvoice auto <text>\n\n"
-        "Use /tvoice list [query] to find a voice ID, then /tvoice set <edge-voice-id>. "
+        "Use /tvoice list [country-code|query] to find a voice ID, then /tvoice set <edge-voice-id>. "
         "This is profile-level voice switching; the next TTS generation should use the selected voice."
     )
 
@@ -38,6 +38,25 @@ def _format_voice(voice) -> str:
     )
 
 
+def _voice_country_code(voice) -> str | None:
+    segments = [segment for segment in voice.locale.lower().replace("_", "-").split("-") if segment]
+    if len(segments) < 2:
+        return None
+    return segments[-1]
+
+
+def _country_code_query(query_parts: list[str] | None, matches) -> str | None:
+    terms = [part.strip().lower() for part in query_parts or [] if part.strip()]
+    if len(terms) != 1:
+        return None
+    term = terms[0]
+    if not re.fullmatch(r"[a-z]{2}", term):
+        return None
+    if any(_voice_country_code(voice) == term for voice in matches):
+        return term
+    return None
+
+
 def _format_voice_catalog(query_parts: list[str] | None = None) -> str:
     query = " ".join(query_parts or []).strip()
     catalog = get_voice_catalog()
@@ -46,15 +65,19 @@ def _format_voice_catalog(query_parts: list[str] | None = None) -> str:
     heading = "Available Edge TTS voices:"
     if query:
         heading = f"Edge TTS voices matching '{query}':"
+    country_code = _country_code_query(query_parts, matches)
+    if country_code:
+        heading = f"Edge TTS voices for country code '{country_code}':"
     lines = [f"{heading} ({source_text})"]
     if catalog.error:
         lines.append(f"- Catalog note: using fallback after fetch failure: {catalog.error}")
     if not matches:
         lines.append("No matching voices. Try a locale, gender, name, or voice ID.")
         return "\n".join(lines)
-    for voice in matches[:VOICE_LIST_LIMIT]:
+    visible_matches = matches if country_code else matches[:VOICE_LIST_LIMIT]
+    for voice in visible_matches:
         lines.append(_format_voice(voice))
-    if len(matches) > VOICE_LIST_LIMIT:
+    if not country_code and len(matches) > VOICE_LIST_LIMIT:
         lines.append(
             f"Showing first {VOICE_LIST_LIMIT} of {len(matches)} voices; narrow your query "
             "with locale, gender, name, or ID."
@@ -74,13 +97,13 @@ def _format_refresh_result() -> str:
 def _split_args(raw_args: str) -> list[str]:
     raw = (raw_args or "").strip()
     if not raw:
-        return ["status"]
+        return ["help"]
     try:
         parts = shlex.split(raw)
     except ValueError:
         parts = raw.split()
     if not parts:
-        return ["status"]
+        return ["help"]
     return parts
 
 

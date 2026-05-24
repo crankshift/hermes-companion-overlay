@@ -193,9 +193,17 @@ def _voice_search_text(voice: Voice) -> str:
     ).lower()
 
 
+def _locale_segments(voice: Voice) -> tuple[str, ...]:
+    return tuple(segment for segment in voice.locale.lower().replace("_", "-").split("-") if segment)
+
+
 def _matches_voice_term(voice: Voice, term: str) -> bool:
     if term in {"male", "female"}:
         return voice.gender.lower() == term
+    if len(term) == 2 and term.isalpha():
+        return term in _locale_segments(voice)
+    if "-" in term and voice.locale.lower().replace("_", "-") == term:
+        return True
     return term in _voice_search_text(voice)
 
 

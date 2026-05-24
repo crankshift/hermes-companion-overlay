@@ -13,7 +13,9 @@ from .sanitizer import _sanitize_text_for_tts
 
 logger = logging.getLogger(__name__)
 
-TVOICE_MENU_DESCRIPTION = "Switch Edge TTS voice: status, list [query], set <voice-id>, refresh"
+TVOICE_MENU_DESCRIPTION = (
+    "Switch Edge TTS voice: status, list [country-code|query], set <voice-id>, refresh, auto <text>"
+)
 
 
 def _install_tts_text_filter() -> None:

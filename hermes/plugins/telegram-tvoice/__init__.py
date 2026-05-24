@@ -16,6 +16,7 @@ from .commands import (
     handle_tvoice,
 )
 from .patches import (
+    TVOICE_MENU_DESCRIPTION,
     _install_telegram_voice_delivery_patch,
     _install_tts_footer_filter,
     _install_tts_text_filter,
@@ -55,6 +56,6 @@ def register(ctx) -> None:
     ctx.register_command(
         "tvoice",
         handle_tvoice,
-        "Switch Telegram/CLI Edge TTS voice: status, list [query], set <voice-id>, refresh",
-        args_hint="status|list [query]|set <voice-id>|refresh|auto <text>",
+        TVOICE_MENU_DESCRIPTION,
+        args_hint="status|list [country-code|query]|set <voice-id>|refresh|auto <text>",
     )
